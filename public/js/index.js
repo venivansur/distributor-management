@@ -47,7 +47,7 @@ function showDistributorDetails(distributorCode) {
     .then((data) => {
       loading.close();
 
-      
+      $("#distributorCode").text(data.distributor_code || "N/A");
       $("#distributorName").text(data.distributor_name || "N/A");
       $("#distributorOwner").text(data.owner_name || "N/A");
       $("#distributorAddress").text(data.address || "N/A");

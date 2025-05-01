@@ -1,0 +1,21 @@
+# Ignore Composer dependencies
+vendor
+
+# Ignore Environment file
+env
+
+# Ignore writable files
+writable
+
+
+
+
+# Ignore IDE files
+*.log
+*.tmp
+*.swp
+*.swo
+*.bak
+
+# Coverage output
+coverage

@@ -110,6 +110,16 @@ body {
   background-color: var(--success-color) !important;
 }
 
+.territory-item {
+  transition: all 0.3s ease;
+  background-color: #f8f9fa;
+}
+
+.territory-item:hover {
+  background-color: #e9ecef;
+  transform: translateX(3px);
+}
+
 @media (max-width: 768px) {
   .btn-responsive {
     width: 100%;

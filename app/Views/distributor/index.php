@@ -102,6 +102,8 @@
                     <div class="modal-body">
                         <div class="row mb-3">
                             <div class="col-md-6">
+                                <!-- <p><strong><i class="fas fa-id-card me-2"></i> Distributor Code:</strong> <span
+                                        id="distributorCode" class="d-block mt-1"></span></p> -->
                                 <p><strong><i class="fas fa-store me-2"></i> Distributor Name:</strong> <span
                                         id="distributorName" class="d-block mt-1"></span></p>
                                 <p><strong><i class="fas fa-user-tie me-2"></i> Owner Name:</strong> <span

@@ -19,15 +19,18 @@ class DistributorModel extends Model
 
 
     public function getDistributorsWithRegion()
-    {
-        return $this->select('
-            distributors.*,
-            regions.region_name,
-            regions.area
-        ')
-            ->join('regions', 'distributors.region_code = regions.region_code', 'left')
-            ->findAll();
-    }
+{
+    return $this->select('
+        distributors.*,
+        regions.region_name,
+        regions.region_code,
+        regions.area,
+        SUBSTRING(regions.region_name, 8) as region_number  // Ambil angka setelah "REGION "
+    ')
+    ->join('regions', 'distributors.region_code = regions.region_code', 'left')
+    ->orderBy('CAST(region_number AS UNSIGNED)', 'ASC')  // Urutkan sebagai angka
+    ->findAll();
+}
 
 
 

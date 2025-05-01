@@ -361,6 +361,7 @@ class DistributorController extends BaseController
         $territories = $territoryModel->where('distributor_code', $code)->findAll();
 
         return $this->response->setJSON([
+            'distributor_code' => $distributor['distributor_code'],
             'distributor_name' => $distributor['distributor_name'],
             'owner_name' => $distributor['owner_name'],
             'address' => $distributor['address'],
@@ -375,35 +376,33 @@ class DistributorController extends BaseController
             ini_set('memory_limit', '512M');
             $distributorModel = new DistributorModel();
 
-
             $distributors = $distributorModel->select('
-                distributors.distributor_code,
-                distributors.distributor_name,
-                distributors.region_code,
                 regions.region_name,
-                distributors.owner_name,
+                distributors.distributor_name,
+                regions.area,
                 distributors.address
             ')
                 ->join('regions', 'distributors.region_code = regions.region_code', 'left')
+                ->orderBy('regions.region_name, distributors.distributor_name')
                 ->findAll();
+
+            if (empty($distributors)) {
+                return redirect()->back()->with('error', 'Tidak ada data distributor untuk diekspor.');
+            }
 
             $spreadsheet = new Spreadsheet();
             $sheet = $spreadsheet->getActiveSheet();
 
-
             $headers = [
-                'A' => 'Kode Distributor',
-                'B' => 'Nama Distributor',
-                'C' => 'Kode Region',
-                'D' => 'Nama Region',
-                'E' => 'Nama Owner',
-                'F' => 'Alamat'
+                'A' => 'Region Name',
+                'B' => 'Distributor Name',
+                'C' => 'Address',
+                'D' => 'Area',
             ];
 
             foreach ($headers as $col => $header) {
                 $sheet->setCellValue($col . '1', $header);
             }
-
 
             $headerStyle = [
                 'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
@@ -411,27 +410,20 @@ class DistributorController extends BaseController
                 'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
                 'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
             ];
-            $sheet->getStyle('A1:F1')->applyFromArray($headerStyle);
-
+            $sheet->getStyle('A1:D1')->applyFromArray($headerStyle);
 
             $row = 2;
             foreach ($distributors as $d) {
-                $sheet->setCellValue('A' . $row, $d['distributor_code']);
-                $sheet->setCellValue('B' . $row, $d['distributor_name']);
-                $sheet->setCellValue('C' . $row, $d['region_code']);
-                $sheet->setCellValue('D' . $row, $d['region_name'] ?? '-');
-                $sheet->setCellValue('E' . $row, $d['owner_name']);
-                $sheet->setCellValue('F' . $row, $d['address']);
+                $sheet->setCellValue('A' . $row, $d['region_name'] ?? '-');
+                $sheet->setCellValue('B' . $row, $d['distributor_name'] ?? '-');
+                $sheet->setCellValue('C' . $row, $d['address'] ?? '-');
+                $sheet->setCellValue('D' . $row, $d['area'] ?? '-');
                 $row++;
             }
 
-
-            foreach (range('A', 'F') as $column) {
+            foreach (range('A', 'D') as $column) {
                 $sheet->getColumnDimension($column)->setAutoSize(true);
             }
-
-
-            $sheet->getProtection()->setSheet(true);
 
             $writer = new Xlsx($spreadsheet);
             $filename = 'export_distributor_' . date('Ymd_His') . '.xlsx';
@@ -445,7 +437,7 @@ class DistributorController extends BaseController
 
         } catch (\Exception $e) {
             log_message('error', 'Export Excel Error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Gagal generate file Excel: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat mengekspor data. Silakan coba lagi.');
         }
     }
 
@@ -455,15 +447,14 @@ class DistributorController extends BaseController
             $request = service('request');
             $model = new DistributorModel();
 
-
             $draw = $request->getGet('draw');
             $start = $request->getGet('start') ?? 0;
             $length = $request->getGet('length') ?? 10;
             $search = $request->getGet('search')['value'] ?? '';
             $regionCode = $request->getGet('region_code');
+            $order = $request->getGet('order')[0] ?? null;
 
             $length = min($length, 100);
-
 
             $builder = $model->db->table('distributors')
                 ->select('
@@ -476,7 +467,6 @@ class DistributorController extends BaseController
                     regions.area
                 ')
                 ->join('regions', 'distributors.region_code = regions.region_code', 'left');
-
 
             if (!empty($regionCode)) {
                 $builder->where('regions.region_code', $regionCode);
@@ -496,6 +486,25 @@ class DistributorController extends BaseController
 
             $totalRecords = $builder->countAllResults(false);
 
+
+            if ($order && isset($order['column'])) {
+
+                $columns = [
+                    0 => 'regions.region_name',
+                    1 => 'distributors.distributor_name',
+                    2 => 'distributors.address',
+                    3 => 'regions.area'
+                ];
+
+                if (isset($columns[$order['column']])) {
+                    $builder->orderBy($columns[$order['column']], $order['dir'] ?? 'asc');
+                }
+            } else {
+
+                $builder->orderBy('CAST(regions.region_code AS UNSIGNED)', 'ASC');
+            }
+
+
             $builder->limit($length, $start);
 
 
@@ -513,7 +522,6 @@ class DistributorController extends BaseController
 
         } catch (\Exception $e) {
             log_message('error', 'Error in DistributorController::data - ' . $e->getMessage());
-
             return $this->response->setStatusCode(500)->setJSON([
                 'draw' => $this->request->getGet('draw', 0),
                 'recordsTotal' => 0,
